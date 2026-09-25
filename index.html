@@ -23,7 +23,7 @@
             min-height: 100vh;
         }
 
-        /* Container utama: Di tengah saat awal, geser ke atas saat dicari */
+        /* Container utama */
         .main-container {
             width: 100%;
             max-width: 800px;
@@ -31,7 +31,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 15vh; /* Jarak dari atas */
+            margin-top: 15vh;
             transition: margin-top 0.4s ease-in-out;
         }
 
@@ -87,7 +87,6 @@
             border-color: rgba(223,225,229,0);
         }
 
-        /* Ikon Kaca Pembesar (SVG) */
         .search-icon {
             fill: #9aa0a6;
             width: 20px;
@@ -148,6 +147,33 @@
             margin-right: 15px;
         }
 
+        /* PESAN STATUS KONEKSI GOOGLE SHEET */
+        .status-msg {
+            font-size: 13px;
+            margin-top: 15px;
+            padding: 8px 15px;
+            border-radius: 16px;
+            background-color: #f8f9fa;
+            border: 1px solid #dadce0;
+            color: #5f6368;
+            display: block; /* Selalu tampil */
+            text-align: center;
+        }
+
+        .status-success {
+            background-color: #e6f4ea;
+            border-color: #ceead6;
+            color: #137333;
+            font-weight: bold;
+        }
+
+        .status-error {
+            background-color: #fce8e6;
+            border-color: #fad2cf;
+            color: #c5221f;
+            font-weight: bold;
+        }
+
         /* Informasi ESMO */
         .info-section {
             margin-top: 30px;
@@ -156,7 +182,6 @@
             color: #4d5156;
             max-width: 600px;
             line-height: 1.6;
-            transition: opacity 0.3s;
         }
 
         .info-title {
@@ -181,14 +206,7 @@
             text-decoration: underline;
         }
 
-        .status-msg {
-            color: #70757a;
-            font-size: 13px;
-            margin-top: 10px;
-            font-style: italic;
-        }
-
-        /* Hasil Pencarian (Card Bersih) */
+        /* Hasil Pencarian */
         #resultContainer {
             width: 100%;
             max-width: 650px;
@@ -254,10 +272,6 @@
             font-weight: bold;
             color: #202124;
         }
-
-        .waktu-ruang {
-            color: #3c4043;
-        }
     </style>
 </head>
 <body>
@@ -276,16 +290,16 @@
                 <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="search-icon">
                     <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
                 </svg>
-                <input type="text" class="search-input" id="searchInput" placeholder="Mengambil data peserta..." disabled autocomplete="off">
+                <input type="text" class="search-input" id="searchInput" placeholder="Sedang menyinkronkan data..." disabled autocomplete="off">
             </div>
             
-            <!-- Tempat Munculnya Rekomendasi (Autocomplete) -->
             <div class="suggestions-dropdown" id="suggestionsDropdown"></div>
         </div>
 
-        <div id="statusMessage" class="status-msg">Memuat jadwal dari Google Sheets...</div>
+        <!-- TEMPAT INFORMASI KONEKSI DATABASE MUNCUL -->
+        <div id="statusMessage" class="status-msg">⏳ Menghubungkan ke Google Sheets Anda...</div>
 
-        <!-- Informasi Tambahan di bawah pencarian -->
+        <!-- Informasi Tambahan -->
         <div class="info-section" id="infoSection">
             <div class="info-title">🥇✨ INFO KOMPETISI ESMO 4 RAYON GRESIK ✨🥇</div>
             <div>Sabtu, 26 September 2026 • SD MUHAMMADIYAH GKB 1 GRESIK</div>
@@ -319,51 +333,71 @@
         const infoSection = document.getElementById("infoSection");
         const resultContainer = document.getElementById("resultContainer");
 
-        // 1. Ambil Data dari Google Sheets saat web dibuka
+        // Proses Ambil Data dari G-Sheet
         window.onload = function() {
             Papa.parse(GOOGLE_SHEET_CSV_URL, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
+                // FITUR PINTAR: Mengubah semua nama kolom excel menjadi huruf kecil agar kebal dari typo
+                transformHeader: function(header) {
+                    return header.trim().toLowerCase();
+                },
                 complete: function(results) {
                     const rawData = results.data;
                     const groupedData = {};
+                    let jumlahBarisTerbaca = 0;
 
                     rawData.forEach(row => {
-                        if (!row.Nama) return; 
+                        // Karena kita pakai transformHeader, kita panggilnya huruf kecil (row.nama, bukan row.Nama)
+                        if (!row.nama || row.nama.trim() === "") return; 
                         
-                        let idKey = row.ID || row.Nama; 
+                        jumlahBarisTerbaca++;
+                        
+                        let idKey = row.id || row.nama; 
                         
                         if (!groupedData[idKey]) {
                             groupedData[idKey] = {
-                                id: row.ID || "-",
-                                nama: row.Nama,
-                                sekolah: row.Sekolah || "-",
+                                id: row.id || "-",
+                                nama: row.nama,
+                                sekolah: row.sekolah || "-",
                                 jadwal: []
                             };
                         }
                         
                         groupedData[idKey].jadwal.push({
-                            sesi: row.Sesi || "-",
-                            mapel: row.Mapel || "-",
-                            waktu: row.Waktu || "-",
-                            ruang: row.Ruang || "-"
+                            sesi: row.sesi || "-",
+                            mapel: row.mapel || "-",
+                            waktu: row.waktu || "-",
+                            ruang: row.ruang || "-"
                         });
                     });
 
                     dataPeserta = Object.values(groupedData);
 
-                    searchInput.disabled = false;
-                    searchInput.placeholder = "Cari nama siswa (contoh: Jovan)...";
-                    statusMsg.style.display = "none";
+                    // CEK APAKAH DATA BERHASIL DIMASUKKAN
+                    if (dataPeserta.length > 0) {
+                        // BERHASIL KONEK DAN ADA DATA
+                        searchInput.disabled = false;
+                        searchInput.placeholder = "Cari nama siswa (contoh: Jovan)...";
+                        
+                        statusMsg.className = "status-msg status-success";
+                        statusMsg.innerHTML = `✅ Database Terhubung: <b>${dataPeserta.length}</b> Peserta berhasil dimuat. (Total ${jumlahBarisTerbaca} baris jadwal)`;
+                    } else {
+                        // KONEK TAPI KOSONG / NAMA KOLOM SALAH
+                        statusMsg.className = "status-msg status-error";
+                        statusMsg.innerHTML = `❌ Excel Terbaca, tapi KOSONG. Pastikan Baris 1 di Excel bernama: <b>nama</b>, <b>sekolah</b>, <b>sesi</b>, <b>mapel</b>, dll.`;
+                    }
                 },
                 error: function(err) {
-                    statusMsg.innerText = "Gagal mengambil data. Pastikan link Google Sheets benar.";
+                    // GAGAL KONEK
+                    statusMsg.className = "status-msg status-error";
+                    statusMsg.innerHTML = "❌ Gagal mengunduh Excel. Pastikan link Google Sheet sudah Anda 'Publikasikan ke Web' (Publish to Web).";
                 }
             });
         };
 
-        // 2. Fitur Autocomplete saat mengetik
+        // Autocomplete
         searchInput.addEventListener("input", function() {
             const val = this.value.toLowerCase().trim();
             suggestionsDropdown.innerHTML = "";
@@ -374,7 +408,6 @@
                 return;
             }
 
-            // Cari nama yang cocok
             const cocok = dataPeserta.filter(peserta => 
                 peserta.nama.toLowerCase().includes(val)
             );
@@ -383,12 +416,10 @@
                 searchWrapper.classList.add("active");
                 suggestionsDropdown.style.display = "block";
                 
-                // Tampilkan maksimal 5 rekomendasi nama
                 cocok.slice(0, 5).forEach(siswa => {
                     const div = document.createElement("div");
                     div.className = "suggestion-item";
                     
-                    // Icon Jam (History/Search) ala google
                     div.innerHTML = `
                         <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="suggestion-icon">
                             <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
@@ -396,7 +427,6 @@
                         ${siswa.nama}
                     `;
                     
-                    // Jika rekomendasi diklik
                     div.onclick = function() {
                         searchInput.value = siswa.nama;
                         sembunyikanDropdown();
@@ -410,7 +440,6 @@
             }
         });
 
-        // 3. Tekan Enter untuk mencari
         searchInput.addEventListener("keypress", function(e) {
             if (e.key === "Enter") {
                 sembunyikanDropdown();
@@ -418,7 +447,6 @@
             }
         });
 
-        // Sembunyikan dropdown jika klik di luar kotak pencarian
         document.addEventListener("click", function(e) {
             if (!searchWrapper.contains(e.target)) {
                 sembunyikanDropdown();
@@ -430,7 +458,7 @@
             suggestionsDropdown.style.display = "none";
         }
 
-        // 4. Logika Menampilkan Hasil Pencarian
+        // Tampilkan Hasil
         function tampilkanHasilPencarian(keyword) {
             const val = keyword.toLowerCase().trim();
             resultContainer.innerHTML = ""; 
@@ -441,9 +469,10 @@
                 peserta.nama.toLowerCase().includes(val)
             );
 
-            // Transisi UI (Pindah ke atas, sembunyikan info brosur)
             mainContainer.classList.add("searched");
             infoSection.style.display = "none";
+            // Sembunyikan pesan sukses ketika orang sudah mulai mencari biar UI nya clean
+            statusMsg.style.display = "none"; 
             resultContainer.style.display = "block";
 
             if (hasilCari.length > 0) {
@@ -454,7 +483,7 @@
                             <tr>
                                 <td>${j.sesi}</td>
                                 <td class="mapel">${j.mapel}</td>
-                                <td class="waktu-ruang"><b>${j.ruang}</b><br><span style="font-size:12px;color:#70757a">${j.waktu}</span></td>
+                                <td style="color: #3c4043;"><b>${j.ruang}</b><br><span style="font-size:12px;color:#70757a">${j.waktu}</span></td>
                             </tr>
                         `;
                     });
@@ -489,7 +518,7 @@
                 resultContainer.innerHTML = `
                     <div style="text-align:center; padding: 40px 20px;">
                         <p style="color: #202124; font-size: 16px;">Penelusuran Anda - <b>${keyword}</b> - tidak cocok dengan peserta manapun.</p>
-                        <p style="color: #70757a; font-size: 14px; margin-top: 10px;">Pastikan ejaan nama siswa sudah benar, atau coba nama panggilan.</p>
+                        <p style="color: #70757a; font-size: 14px; margin-top: 10px;">Pastikan ejaan nama siswa sudah benar.</p>
                     </div>
                 `;
             }
@@ -497,3 +526,4 @@
     </script>
 </body>
 </html>
+
