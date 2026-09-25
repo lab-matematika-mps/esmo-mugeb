@@ -3,289 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pencarian Jadwal Peserta - ESMO 4</title>
+    <title>ESMO 4 Search</title>
     <!-- Library PapaParse untuk membaca Google Sheets (CSV) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        :root {
-            --sidebar-bg: #2c343f;
-            --sidebar-text: #a1a8b3;
-            --main-bg: #f4f7f6;
-            --card-bg: #ffffff;
-            --primary-color: #1dc4e9;
-            --secondary-color: #1de9b6;
-            --text-dark: #333333;
-        }
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
         }
 
         body {
+            background-color: #ffffff;
+            color: #202124;
             display: flex;
+            flex-direction: column;
+            align-items: center;
             min-height: 100vh;
-            background-color: var(--main-bg);
-            color: var(--text-dark);
         }
 
-        /* Sidebar Styling */
-        .sidebar {
-            width: 280px;
-            background-color: var(--sidebar-bg);
-            color: white;
+        /* Container utama: Di tengah saat awal, geser ke atas saat dicari */
+        .main-container {
+            width: 100%;
+            max-width: 800px;
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            align-items: center;
+            margin-top: 15vh; /* Jarak dari atas */
+            transition: margin-top 0.4s ease-in-out;
         }
 
-        .sidebar-brand {
-            font-size: 24px;
+        .main-container.searched {
+            margin-top: 4vh;
+        }
+
+        /* Logo bergaya Google */
+        .logo {
+            font-size: 70px;
             font-weight: bold;
-            color: white;
+            letter-spacing: -2px;
+            margin-bottom: 25px;
+            user-select: none;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .logo span:nth-child(1) { color: #4285F4; } /* E - Biru */
+        .logo span:nth-child(2) { color: #EA4335; } /* S - Merah */
+        .logo span:nth-child(3) { color: #FBBC05; } /* M - Kuning */
+        .logo span:nth-child(4) { color: #34A853; } /* O - Hijau */
+        .logo-number {
+            font-size: 40px;
+            color: #5f6368;
+            margin-left: 5px;
+            margin-bottom: 10px;
+        }
+
+        /* Kolom Pencarian */
+        .search-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            z-index: 100;
+        }
+
+        .search-box {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
+            width: 100%;
+            height: 48px;
+            background: #fff;
+            border: 1px solid #dfe1e5;
+            box-shadow: none;
+            border-radius: 24px;
+            padding: 0 20px;
+            transition: box-shadow 0.2s;
         }
 
-        .info-card {
-            background-color: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            color: var(--sidebar-text);
-            border-left: 4px solid var(--secondary-color);
+        .search-box:hover, .search-box.active {
+            box-shadow: 0 1px 6px rgba(32,33,36,.28);
+            border-color: rgba(223,225,229,0);
         }
 
-        .info-card h3 {
-            color: white;
-            margin-bottom: 10px;
-            font-size: 16px;
+        /* Ikon Kaca Pembesar (SVG) */
+        .search-icon {
+            fill: #9aa0a6;
+            width: 20px;
+            height: 20px;
+            margin-right: 15px;
         }
 
-        .info-card ul {
-            list-style: none;
-            margin-top: 10px;
-        }
-
-        .info-card li {
-            margin-bottom: 8px;
-        }
-
-        /* Main Content Styling */
-        .main-content {
+        .search-input {
             flex: 1;
-            padding: 30px;
-            overflow-y: auto;
-        }
-
-        .header {
-            background-color: var(--card-bg);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .header h1 {
-            font-size: 22px;
-            color: var(--text-dark);
-        }
-
-        .search-container {
-            display: flex;
-            gap: 10px;
-        }
-
-        .search-container input {
-            flex: 1;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            outline: none;
-        }
-
-        .search-container input:focus {
-            border-color: var(--primary-color);
-        }
-
-        .search-container button {
-            padding: 12px 25px;
-            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-            color: white;
             border: none;
-            border-radius: 5px;
+            outline: none;
             font-size: 16px;
+            color: #202124;
+            background-color: transparent;
+        }
+
+        /* Dropdown Rekomendasi Nama */
+        .suggestions-dropdown {
+            position: absolute;
+            top: 48px;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 0 0 24px 24px;
+            box-shadow: 0 4px 6px rgba(32,33,36,.28);
+            border: 1px solid #dfe1e5;
+            border-top: none;
+            display: none;
+            overflow: hidden;
+            padding-bottom: 10px;
+            padding-top: 10px;
+            z-index: 99;
+        }
+
+        .search-wrapper.active .search-box {
+            border-radius: 24px 24px 0 0;
+            border-bottom: 1px solid #e8eaed;
+            box-shadow: 0 1px 6px rgba(32,33,36,.28);
+        }
+
+        .suggestion-item {
+            padding: 8px 20px;
+            display: flex;
+            align-items: center;
             cursor: pointer;
-            font-weight: bold;
+            font-size: 15px;
+            color: #202124;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f1f3f4;
+        }
+        
+        .suggestion-icon {
+            fill: #9aa0a6;
+            width: 16px;
+            height: 16px;
+            margin-right: 15px;
+        }
+
+        /* Informasi ESMO */
+        .info-section {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 13px;
+            color: #4d5156;
+            max-width: 600px;
+            line-height: 1.6;
             transition: opacity 0.3s;
         }
 
-        .search-container button:hover {
-            opacity: 0.9;
+        .info-title {
+            font-size: 14px;
+            color: #202124;
+            font-weight: bold;
+            margin-bottom: 8px;
         }
 
-        .search-container button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
+        .info-links {
+            margin-top: 10px;
+            margin-bottom: 10px;
         }
 
-        /* Result Card Styling */
+        .info-links a {
+            color: #1a0dab;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+
+        .info-links a:hover {
+            text-decoration: underline;
+        }
+
+        .status-msg {
+            color: #70757a;
+            font-size: 13px;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        /* Hasil Pencarian (Card Bersih) */
+        #resultContainer {
+            width: 100%;
+            max-width: 650px;
+            margin-top: 30px;
+            display: none;
+        }
+
         .result-card {
-            background-color: var(--card-bg);
-            padding: 25px;
+            border: 1px solid #dfe1e5;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 20px;
             margin-bottom: 20px;
+            background: #fff;
         }
 
-        .student-profile {
+        .student-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ebebeb;
         }
 
-        .student-info h2 {
-            font-size: 20px;
-            color: var(--text-dark);
-            margin-bottom: 5px;
+        .student-name {
+            font-size: 18px;
+            color: #1a0dab;
+            margin-bottom: 3px;
         }
 
-        .student-info p {
-            color: #777;
-            font-size: 14px;
+        .student-school {
+            font-size: 13px;
+            color: #4d5156;
         }
 
         .student-id {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
+            background-color: #f1f3f4;
+            color: #5f6368;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            font-size: 14px;
         }
 
         th, td {
-            padding: 12px 15px;
+            padding: 10px 8px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #f1f3f4;
         }
 
         th {
-            background-color: #f8f9fa;
-            color: #555;
-            font-weight: 600;
+            color: #70757a;
+            font-weight: normal;
         }
 
-        .badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
+        .mapel {
             font-weight: bold;
-            color: white;
+            color: #202124;
         }
 
-        .badge-math { background-color: #ff5370; }
-        .badge-english { background-color: #4099ff; }
-        .badge-sains { background-color: #2ed8b6; }
-        .badge-default { background-color: #888; }
-
-        .status-message {
-            text-align: center;
-            padding: 20px;
-            color: #777;
-            background: white;
-            border-radius: 8px;
-            display: none;
-            font-style: italic;
-        }
-
-        @media (max-width: 768px) {
-            body { flex-direction: column; }
-            .sidebar { width: 100%; }
+        .waktu-ruang {
+            color: #3c4043;
         }
     </style>
 </head>
 <body>
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-        <div class="sidebar-brand">
-            <span style="color: var(--primary-color);">Q</span> ESMO Admin
-        </div>
+    <div class="main-container" id="mainContainer">
         
-        <div class="info-card">
-            <h3>✨ INFO ESMO 4 ✨</h3>
-            <p>English, Sains, Math Olympiad Tingkat Nasional</p>
-            <ul>
-                <li>📅 <b>Tanggal:</b> 26 Sept 2026</li>
-                <li>📍 <b>Lokasi:</b> SD Muhammadiyah GKB 1 Gresik</li>
-            </ul>
+        <!-- Logo ESMO (Google Style) -->
+        <div class="logo">
+            <span>E</span><span>S</span><span>M</span><span>O</span><span class="logo-number">4</span>
         </div>
 
-        <div class="info-card" style="border-left-color: #ff5370;">
-            <h3>⏱️ Jadwal Umum</h3>
-            <ul>
-                <li><b>Matematika:</b> 07.30 - 08.30</li>
-                <li><b>English:</b> 09.00 - 10.00</li>
-                <li><b>Sains:</b> 10.30 - 11.30</li>
-            </ul>
-        </div>
-
-        <div class="info-card" style="border-left-color: #ffb64d;">
-            <h3>📞 Pusat Bantuan</h3>
-            <p>Jika ada kendala, hubungi:</p>
-            <p style="margin-top: 5px;"><b>Ust Lala: 081703699569</b></p>
-        </div>
-    </aside>
-
-    <!-- MAIN CONTENT -->
-    <main class="main-content">
-        <div class="header">
-            <h1>Cari Jadwal Peserta Lomba</h1>
-            <p style="color: #777; font-size: 14px;">Masukkan nama lengkap atau nama panggilan siswa untuk melihat ruangan dan jadwal lombanya.</p>
-            <div class="search-container">
-                <input type="text" id="searchInput" placeholder="Loading data dari Google Sheets..." disabled onkeypress="handleKeyPress(event)">
-                <button id="searchBtn" onclick="cariPeserta()" disabled>Cari Jadwal</button>
+        <!-- Area Pencarian -->
+        <div class="search-wrapper" id="searchWrapper">
+            <div class="search-box" id="searchBox">
+                <!-- Ikon Kaca Pembesar -->
+                <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="search-icon">
+                    <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+                </svg>
+                <input type="text" class="search-input" id="searchInput" placeholder="Mengambil data peserta..." disabled autocomplete="off">
             </div>
+            
+            <!-- Tempat Munculnya Rekomendasi (Autocomplete) -->
+            <div class="suggestions-dropdown" id="suggestionsDropdown"></div>
         </div>
 
+        <div id="statusMessage" class="status-msg">Memuat jadwal dari Google Sheets...</div>
+
+        <!-- Informasi Tambahan di bawah pencarian -->
+        <div class="info-section" id="infoSection">
+            <div class="info-title">🥇✨ INFO KOMPETISI ESMO 4 RAYON GRESIK ✨🥇</div>
+            <div>Sabtu, 26 September 2026 • SD MUHAMMADIYAH GKB 1 GRESIK</div>
+            <div style="margin-top: 5px; font-size: 12px;">
+                Matematika: 07.30-08.30 | English: 09.00-10.00 | Sains: 10.30-11.30
+            </div>
+            <div class="info-links">
+                <a href="https://bit.ly/JuknisESMO4" target="_blank">📄 Baca Juknis</a>
+                <a href="https://bit.ly/PendaftaranESMO4" target="_blank">📝 Pendaftaran (Rp 30k/mapel)</a>
+            </div>
+            <div>Batas Pendaftaran: 18 September 2026 ⚠️</div>
+            <div style="margin-top: 8px;">CP Pendaftaran: <b>Ust Lala (081703699569)</b></div>
+        </div>
+
+        <!-- Container Hasil Pencarian -->
         <div id="resultContainer"></div>
-        <div id="statusMessage" class="status-message">Mengunduh data jadwal peserta...</div>
-    </main>
+    </div>
 
     <script>
-        // ==========================================
-        // LINK CSV GOOGLE SHEETS SUDAH DIMASUKKAN DI SINI
-        // ==========================================
+        // LINK GOOGLE SHEETS ANDA
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQXk5wyONyUt3PRTxgmdc-T4YpNUIGsgjSuyb99Q_T0qyEmIo03mklt99myJkZFFHbRz-HvbYzkJuPX/pub?gid=0&single=true&output=csv";
         
         let dataPeserta = [];
 
-        // Fungsi otomatis berjalan saat web dibuka untuk mengambil data dari G-Sheet
-        window.onload = function() {
-            const statusMsg = document.getElementById("statusMessage");
-            statusMsg.style.display = "block";
-            statusMsg.innerText = "⏳ Sedang menyinkronkan data dengan Google Sheets...";
+        // DOM Elements
+        const searchInput = document.getElementById("searchInput");
+        const searchWrapper = document.getElementById("searchWrapper");
+        const suggestionsDropdown = document.getElementById("suggestionsDropdown");
+        const statusMsg = document.getElementById("statusMessage");
+        const mainContainer = document.getElementById("mainContainer");
+        const infoSection = document.getElementById("infoSection");
+        const resultContainer = document.getElementById("resultContainer");
 
+        // 1. Ambil Data dari Google Sheets saat web dibuka
+        window.onload = function() {
             Papa.parse(GOOGLE_SHEET_CSV_URL, {
                 download: true,
                 header: true,
@@ -294,12 +329,10 @@
                     const rawData = results.data;
                     const groupedData = {};
 
-                    // Mengelompokkan baris G-Sheet yang namanya sama ke dalam 1 peserta
                     rawData.forEach(row => {
-                        // Pastikan kolom Nama tidak kosong
                         if (!row.Nama) return; 
                         
-                        let idKey = row.ID || row.Nama; // Gunakan ID sebagai kunci, jika tidak ada gunakan nama
+                        let idKey = row.ID || row.Nama; 
                         
                         if (!groupedData[idKey]) {
                             groupedData[idKey] = {
@@ -310,101 +343,138 @@
                             };
                         }
                         
-                        // Masukkan jadwal ke array siswa tersebut
                         groupedData[idKey].jadwal.push({
                             sesi: row.Sesi || "-",
                             mapel: row.Mapel || "-",
                             waktu: row.Waktu || "-",
-                            ruang: row.Ruang || "-",
-                            kategori: tentukanWarnaBadge(row.Mapel)
+                            ruang: row.Ruang || "-"
                         });
                     });
 
-                    // Ubah format data agar bisa dicari
                     dataPeserta = Object.values(groupedData);
 
-                    // Aktifkan kolom pencarian
-                    document.getElementById("searchInput").disabled = false;
-                    document.getElementById("searchInput").placeholder = "Contoh: Budi Santoso...";
-                    document.getElementById("searchBtn").disabled = false;
-                    
+                    searchInput.disabled = false;
+                    searchInput.placeholder = "Cari nama siswa (contoh: Jovan)...";
                     statusMsg.style.display = "none";
                 },
                 error: function(err) {
-                    statusMsg.innerText = "❌ Gagal mengambil data dari Google Sheets. Pastikan link CSV benar dan sheet sudah dipublikasikan.";
-                    console.error("PapaParse Error:", err);
+                    statusMsg.innerText = "Gagal mengambil data. Pastikan link Google Sheets benar.";
                 }
             });
         };
 
-        // Fungsi untuk memberi warna otomatis berdasarkan nama pelajaran
-        function tentukanWarnaBadge(mapel) {
-            if (!mapel) return "badge-default";
-            const m = mapel.toLowerCase();
-            if (m.includes("math") || m.includes("matematika")) return "badge-math";
-            if (m.includes("english") || m.includes("inggris")) return "badge-english";
-            if (m.includes("sains") || m.includes("ipa")) return "badge-sains";
-            return "badge-default";
-        }
-
-        function handleKeyPress(e) {
-            if (e.key === 'Enter') {
-                cariPeserta();
-            }
-        }
-
-        function cariPeserta() {
-            const input = document.getElementById("searchInput").value.toLowerCase();
-            const container = document.getElementById("resultContainer");
-            const statusMsg = document.getElementById("statusMessage");
+        // 2. Fitur Autocomplete saat mengetik
+        searchInput.addEventListener("input", function() {
+            const val = this.value.toLowerCase().trim();
+            suggestionsDropdown.innerHTML = "";
             
-            container.innerHTML = ""; 
-            
-            if (input.trim() === "") {
-                statusMsg.style.display = "block";
-                statusMsg.innerText = "Silakan masukkan nama terlebih dahulu.";
+            if (val === "") {
+                searchWrapper.classList.remove("active");
+                suggestionsDropdown.style.display = "none";
                 return;
             }
 
-            // Filter data peserta dari hasil download Google Sheets
-            const hasilCari = dataPeserta.filter(peserta => 
-                peserta.nama.toLowerCase().includes(input)
+            // Cari nama yang cocok
+            const cocok = dataPeserta.filter(peserta => 
+                peserta.nama.toLowerCase().includes(val)
             );
 
-            if (hasilCari.length > 0) {
-                statusMsg.style.display = "none";
+            if (cocok.length > 0) {
+                searchWrapper.classList.add("active");
+                suggestionsDropdown.style.display = "block";
                 
+                // Tampilkan maksimal 5 rekomendasi nama
+                cocok.slice(0, 5).forEach(siswa => {
+                    const div = document.createElement("div");
+                    div.className = "suggestion-item";
+                    
+                    // Icon Jam (History/Search) ala google
+                    div.innerHTML = `
+                        <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="suggestion-icon">
+                            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+                        </svg>
+                        ${siswa.nama}
+                    `;
+                    
+                    // Jika rekomendasi diklik
+                    div.onclick = function() {
+                        searchInput.value = siswa.nama;
+                        sembunyikanDropdown();
+                        tampilkanHasilPencarian(siswa.nama);
+                    };
+                    
+                    suggestionsDropdown.appendChild(div);
+                });
+            } else {
+                sembunyikanDropdown();
+            }
+        });
+
+        // 3. Tekan Enter untuk mencari
+        searchInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                sembunyikanDropdown();
+                tampilkanHasilPencarian(this.value);
+            }
+        });
+
+        // Sembunyikan dropdown jika klik di luar kotak pencarian
+        document.addEventListener("click", function(e) {
+            if (!searchWrapper.contains(e.target)) {
+                sembunyikanDropdown();
+            }
+        });
+
+        function sembunyikanDropdown() {
+            searchWrapper.classList.remove("active");
+            suggestionsDropdown.style.display = "none";
+        }
+
+        // 4. Logika Menampilkan Hasil Pencarian
+        function tampilkanHasilPencarian(keyword) {
+            const val = keyword.toLowerCase().trim();
+            resultContainer.innerHTML = ""; 
+            
+            if (val === "") return;
+
+            const hasilCari = dataPeserta.filter(peserta => 
+                peserta.nama.toLowerCase().includes(val)
+            );
+
+            // Transisi UI (Pindah ke atas, sembunyikan info brosur)
+            mainContainer.classList.add("searched");
+            infoSection.style.display = "none";
+            resultContainer.style.display = "block";
+
+            if (hasilCari.length > 0) {
                 hasilCari.forEach(peserta => {
                     let barisJadwal = "";
                     peserta.jadwal.forEach(j => {
                         barisJadwal += `
                             <tr>
                                 <td>${j.sesi}</td>
-                                <td><span class="badge ${j.kategori}">${j.mapel}</span></td>
-                                <td>${j.waktu}</td>
-                                <td><strong>${j.ruang}</strong></td>
+                                <td class="mapel">${j.mapel}</td>
+                                <td class="waktu-ruang"><b>${j.ruang}</b><br><span style="font-size:12px;color:#70757a">${j.waktu}</span></td>
                             </tr>
                         `;
                     });
 
                     const cardHTML = `
                         <div class="result-card">
-                            <div class="student-profile">
-                                <div class="student-info">
-                                    <h2>${peserta.nama}</h2>
-                                    <p>🏫 Asal Sekolah: ${peserta.sekolah}</p>
+                            <div class="student-header">
+                                <div>
+                                    <div class="student-name">${peserta.nama}</div>
+                                    <div class="student-school">${peserta.sekolah}</div>
                                 </div>
                                 <div class="student-id">${peserta.id}</div>
                             </div>
                             
-                            <h3>Jadwal Lomba</h3>
                             <table>
                                 <thead>
                                     <tr>
                                         <th>Sesi</th>
-                                        <th>Mata Pelajaran</th>
-                                        <th>Waktu</th>
-                                        <th>Ruangan</th>
+                                        <th>Mapel</th>
+                                        <th>Ruangan & Waktu</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -413,11 +483,15 @@
                             </table>
                         </div>
                     `;
-                    container.innerHTML += cardHTML;
+                    resultContainer.innerHTML += cardHTML;
                 });
             } else {
-                statusMsg.innerText = "Data peserta tidak ditemukan. Pastikan nama yang diketik benar.";
-                statusMsg.style.display = "block";
+                resultContainer.innerHTML = `
+                    <div style="text-align:center; padding: 40px 20px;">
+                        <p style="color: #202124; font-size: 16px;">Penelusuran Anda - <b>${keyword}</b> - tidak cocok dengan peserta manapun.</p>
+                        <p style="color: #70757a; font-size: 14px; margin-top: 10px;">Pastikan ejaan nama siswa sudah benar, atau coba nama panggilan.</p>
+                    </div>
+                `;
             }
         }
     </script>
